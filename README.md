@@ -9,6 +9,7 @@ This repository contains the source code for the GAP-CAN framework, which search
 #### Furthermore, if you utilize the datasets from this repository, please cite them as well:
 
 CIC Dataset:
+
 *Euclides Carlos Pinto Neto, Hamideh Taslimasa, Sajjad Dadkhah, Shahrear Iqbal, Pulei Xiong, Taufiq Rahman, and Ali A Ghorbani. Ciciov2024: Advancing realistic ids approaches against dos and spoofing attack in iov can bus. Internet of Things, 26:101209, 2024.*
 
 HCRL Dataset:
