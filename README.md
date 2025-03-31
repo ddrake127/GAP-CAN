@@ -4,7 +4,7 @@ This repository contains the source code for the GAP-CAN framework, which search
 ## Citations
 #### If you use the software presented in this repository, please cite as:
 
-*Devin Drake, Victor Cobilean, Harindra Mavikumbure, Morgan Stuart, Swagat Das, and Milos Manic. Gradient-Based Adversarial Attack on Transformer-Based CAN Bus Anomaly Detectors. In ICPS 2025 – 8th IEEE International Conference on Industrial Cyber-Physical Systems, pages 1–7. IEEE, May 2025.*
+*Devin Drake, Victor Cobilean, Harindra Mavikumbure, Morgan Stuart, Swagat Das, and Milos Manic. GAP-CAN: Gradient-Based Adversarial Attack on Transformer-Based CAN Bus Anomaly Detectors. In ICPS 2025 – 8th IEEE International Conference on Industrial Cyber-Physical Systems, pages 1–7. IEEE, May 2025.*
 
 #### Furthermore, if you utilize the datasets from this repository, please cite them as well:
 
