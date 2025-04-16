@@ -57,7 +57,7 @@ def main():
         sys.exit()
         
     futures = []
-    with ProcessPoolExecutor(max_workers=NUM_PROCS) as pool:
+    with ProcessPoolExecutor(max_workers=args.num_procs) as pool:
         for i in range(NUM_PROCS):
             futures.append(pool.submit(targ, i,args.model, args.model_path, args.output_dir, args.exp_name))
         wait(futures, return_when=ALL_COMPLETED)
