@@ -53,15 +53,9 @@ class CANDatasetCSV(Dataset):
         self.num_items = len(self.df) - self.window_size - 1
 
     def __len__(self):
-        # return self.num_items - 1
         return self.num_items
     
     def __getitem__(self, idx):
-        # return tokens n : n + window_size, n+1 : n+1 + window_size
-
-
-        # _in = self.df[idx + 1 : idx + 1 + self.window_size]
-        # _out = self.df[idx + 1 + 1 : idx + 1 + 1 + self.window_size]
         _in = self.df[idx : idx + self.window_size]
         _out = self.df[idx + 1 : idx + 1 + self.window_size]
         return _in, _out
@@ -133,9 +127,21 @@ class MultiHeadAttention(nn.Module):
         self.W_k = nn.Linear(d_model, d_model)
         self.W_v = nn.Linear(d_model, d_model)
         self.W_o = nn.Linear(d_model, d_model)
+
+    def split_heads(self, x):
+        batch_size, seq_length, _ = x.size()
+        return x.view(batch_size, seq_length, self.num_heads, self.d_k).transpose(1, 2)
+        
+    def combine_heads(self, x):
+        batch_size, _, seq_length, _ = x.size()
+        return x.transpose(1, 2).contiguous().view(batch_size, seq_length, self.d_model)
     
-    def forward(self, Q, K, V, is_casual=True):
-        return torch.nn.functional.scaled_dot_product_attention(Q, K, V, attn_mask=None, dropout_p=(0.2 if self.training else 0.0), is_causal=is_casual)
+    def forward(self, Q, K, V, is_causal=True):
+        Q = self.split_heads(self.W_q(Q))
+        K = self.split_heads(self.W_k(K))
+        V = self.split_heads(self.W_v(V))
+        attn = torch.nn.functional.scaled_dot_product_attention(Q, K, V, attn_mask=None, dropout_p=(0.2 if self.training else 0.0), is_causal=is_causal)
+        return self.W_o(self.combine_heads(attn))
 
         
 
@@ -174,8 +180,8 @@ class DecoderLayer(nn.Module):
         self.norm2 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
         
-    def forward(self, x, is_casual):
-        attn_output = self.self_attn(x, x, x, is_casual)
+    def forward(self, x, is_causal):
+        attn_output = self.self_attn(x, x, x, is_causal)
         x = self.norm1(x + self.dropout(attn_output))
         ff_output = self.feed_forward(x)
         x = self.norm2(x + self.dropout(ff_output))
@@ -200,7 +206,7 @@ class Transformer(nn.Module):
 
         dec_output = tgt_embedded
         for dec_layer in self.decoder_layers:
-            dec_output = dec_layer(dec_output, is_casual=True)
+            dec_output = dec_layer(dec_output, is_causal=True)
 
         output = self.fc(dec_output)
         return output

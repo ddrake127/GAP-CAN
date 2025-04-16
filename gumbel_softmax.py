@@ -17,14 +17,14 @@ NUM_TOK_MSG = 9 # number of tokens per message
     This function creates a batch from the original inputs (ins) and the tokens that we
     want to stitch in (other_tokens)
 '''
-def get_multitoken_batch(ins, outs, res, other_tokens, model, batch_size):
+def get_multitoken_batch(ins, outs, res, other_tokens, model, batch_size, embedder):
     _batch = None
     num_other_tokens = 0
     if other_tokens != None:
         num_other_tokens = other_tokens.size(0)
     counter = 1
     for k in range(batch_size):
-        orig_embed_before = model.decoder_embedding(ins[k][:(ins.size(1) - (k+1))])[None, :, :]
+        orig_embed_before = embedder(ins[k][:(ins.size(1) - (k+1))])[None, :, :]
         if k == 0:
             # the last token is the one we are currently searching
             new_embed = torch.concat([orig_embed_before, res[None, None, :]], dim=1)
@@ -39,7 +39,7 @@ def get_multitoken_batch(ins, outs, res, other_tokens, model, batch_size):
             # 2. the single token we are searching
             # 3. the tokens from the distribution we have already trained
             # 4. the tokens that would come after all of this
-            orig_embed_after = model.decoder_embedding(ins[k][-counter:])[None, :, :]
+            orig_embed_after = embedder(ins[k][-counter:])[None, :, :]
             if other_tokens != None:
                 new_embed = torch.concat([orig_embed_before, res[None, None, :], other_tokens[None, :, :], orig_embed_after], dim=1)
             else:
@@ -53,7 +53,7 @@ def get_multitoken_batch(ins, outs, res, other_tokens, model, batch_size):
 '''
     Performs the Gumbel-Softmax space search optimization
 '''
-def multi_token_gsm(params, embeddings, model, model_from_embedding, inputs, outputs, size, num_iters, batch_size, logits, tau=1, verbose=False):
+def multi_token_gsm(params, embeddings, model, model_from_embedding, embedder, inputs, outputs, size, num_iters, batch_size, logits, tau=1, verbose=False):
     log_coefficients = logits.detach().clone()
     log_coefficients.requires_grad = True
     learning_rate_init = 0.01
@@ -73,8 +73,8 @@ def multi_token_gsm(params, embeddings, model, model_from_embedding, inputs, out
             rest_sampled = F.gumbel_softmax(log_coefficients[1:], tau=tau, hard=False)
             rest_res = rest_sampled @ embeddings[:size, :]
         res = sampled @ embeddings[:size, :]
-        _batch = get_multitoken_batch(_inputs, _outputs, res, rest_res, model, batch_size)
-        mod_out = model_from_embedding(_batch, is_casual=True)
+        _batch = get_multitoken_batch(_inputs, _outputs, res, rest_res, model, batch_size, embedder)
+        mod_out = model_from_embedding(_batch, is_causal=True)
 
         # we are modifying more than one token, so we need to change the tokens in our output to match what we selected
         if rest_sampled != None:
@@ -185,12 +185,6 @@ def load_dataset_HCRL(params, ids, target_id, num_msgs_set, test_size = 5000, ge
     else:
         return ins_and_outs
 
-''' 
-    Loads the testing data and creates inputs and outputs for the pertubation search.
-    This gets everything into just the right format, where we have all of the windows we would ever
-    need for inputs and the outputs are the single next token we will need for calcuating a loss value.
-    Very convenient, all data-handling should be completed in this function.
-'''
 def load_dataset_CIC(params, ids, target_id, num_msgs_set, test_size = 5000):
     OFFSET = 1 # how far into the first batch you have to go to get to the first window that we want; how long we have to wait
                # for the first token we want to slide into the window
@@ -255,33 +249,9 @@ def load_models(path, model_name, ids_path, new_device=None):
     return model, model_from_embedding, params, ids
 
 
-'''
-    Function to run the Gumbel-Softmax input space search for the selected ID (message_id)
-    for the next test_size number of messages.
 
-    It will search all num_tokens number of consecutive combinations that it can for each starting
-    location in targ_off.
-
-    For example:
-        msg_id = 258
-        targ_off = [0,1,2]
-        num_tokens = 4
-        test_size = 500
-
-    This function will perform the Gumbel-Softmax input space search for instances in the next 500
-    messages where the ID == 258.  It will do this for the following token combinations:
-        - [0, 1, 2, 3] => targ_off[0]
-        - [1, 2, 3, 4] => targ_off[1]
-        - [2, 3, 4, 5] => targ_off[2]
-
-    The function is currently set up to then check to see if it can find an adversarial sample from
-    the derived distribution.  It will return an array with the number of queries required to find
-    and adversarial sample, or -1 if it cannot
-'''
-def run_gsm_multitoken_HCRL(msg_id, targ_off, num_tokens, test_size):
+def run_gsm_multitoken_HCRL(model_name, path, msg_id, targ_off, num_tokens, test_size):
     
-    path = "final_models/"
-    model_name = "model_20241028_130645_77" # 32 embedding size
     ids_path = 'ids.npy'
     
     
@@ -301,7 +271,8 @@ def run_gsm_multitoken_HCRL(msg_id, targ_off, num_tokens, test_size):
     # get the data needed for this experiment, which is all input windows that our TARGET_ID will show up in
     data_set = load_dataset_HCRL(params, ids, target_id=TARGET_ID, num_msgs_set=22, test_size = test_size)
     emb_tokens = model.decoder_embedding.weight # grab a reference to the embeddings so we can use this in our matrix multiplication later, too
-    accuracies = []
+    accuracies_fit = []
+    accuracies_adv = []
     for d in data_set:
         for targ in targ_off:
             logits_in = None
@@ -315,31 +286,33 @@ def run_gsm_multitoken_HCRL(msg_id, targ_off, num_tokens, test_size):
                     logits_in = logit_seed
                 else:
                     logits_in = torch.concat([logit_seed, log_coe])
-                log_coe = multi_token_gsm(params, emb_tokens, model, model_from_embedding, _ins, _outs, size=258, num_iters=NUM_ITERATIONS, batch_size=BATCH_SIZE + num_tokens, logits=logits_in)
+                log_coe = multi_token_gsm(params, emb_tokens, model, model_from_embedding, model.decoder_embedding, _ins, _outs, size=258, num_iters=NUM_ITERATIONS, batch_size=BATCH_SIZE + num_tokens, logits=logits_in)
             
             original_tokens = list(d[0][BASIS + targ + num_tokens-1][-num_tokens:])
-            original_loss = torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, original_tokens, WINDOW_SIZE * NUM_TOK_MSG))
+            original_loss = torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, original_tokens, 180))
             found_at = 0
-            found = False
+            found_fit = False
+            found_adv = False
             while found_at < 100:
                 sample = list(torch.argmax(F.gumbel_softmax(log_coe, tau=1, hard=True), dim=-1))
-                if sample != original_tokens and torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, sample, WINDOW_SIZE * NUM_TOK_MSG)) <= original_loss:
-                    found = True
+                # if sample != original_tokens and determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, sample, 180) <= original_loss:
+                if torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, sample, 180)) <= original_loss and not found_fit:
+                    found_fit = True
+                    accuracies_fit.append(found_at)
+                if sample != original_tokens and torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, sample, 180)) <= original_loss and not found_adv:
+                    found_adv = True
+                    accuracies_adv.append(found_at)
+                if found_adv and found_fit:
                     break
                 found_at += 1
-            if not found:
-                found_at = -1
-            accuracies.append(found_at)
-    return accuracies
+            if not found_adv:
+                accuracies_adv.append(-1)
+            if not found_fit:
+                accuracies_fit.append(-1)
+    return accuracies_fit, accuracies_adv
 
-'''
-    This function, and the one above it, should have been combined, but alas, it was not.
-    See the doc above, as the logic is the same
-'''
-def run_gsm_multitoken_CIC(msg_id, targ_off, num_tokens, test_size):
+def run_gsm_multitoken_CIC(model_name, path, msg_id, targ_off, num_tokens, test_size):
     
-    path = "final_models/"
-    model_name = "model_32_45"
     ids_path = "cic_ids.npy"
     
     
@@ -358,7 +331,8 @@ def run_gsm_multitoken_CIC(msg_id, targ_off, num_tokens, test_size):
     # get the data needed for this experiment, which is all input windows that our TARGET_ID will show up in
     data_set = load_dataset_CIC(params, ids, target_id=msg_id, num_msgs_set=22, test_size = test_size)
     emb_tokens = model.decoder_embedding.weight # grab a reference to the embeddings so we can use this in our matrix multiplication later, too
-    accuracies = []
+    accuracies_fit = []
+    accuracies_adv = []
     for d in data_set:
         for targ in targ_off:
             logits_in = None
@@ -372,18 +346,26 @@ def run_gsm_multitoken_CIC(msg_id, targ_off, num_tokens, test_size):
                     logits_in = logit_seed
                 else:
                     logits_in = torch.concat([logit_seed, log_coe])
-                log_coe = multi_token_gsm(params, emb_tokens, model, model_from_embedding, _ins, _outs, size=TOKEN_DIM, num_iters=NUM_ITERATIONS, batch_size=BATCH_SIZE + num_tokens, logits=logits_in)
+                log_coe = multi_token_gsm(params, emb_tokens, model, model_from_embedding, model.decoder_embedding, _ins, _outs, size=TOKEN_DIM, num_iters=NUM_ITERATIONS, batch_size=BATCH_SIZE + num_tokens, logits=logits_in)
             original_tokens = list(d[0][BASIS + targ + num_tokens-1][-num_tokens:])
-            original_loss = torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, original_tokens, WINDOW_SIZE * NUM_TOK_MSG))
+            original_loss = torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, original_tokens, 180))
             found_at = 0
-            found = False
+            found_fit = False
+            found_adv = False
             while found_at < 100:
                 sample = list(torch.argmax(F.gumbel_softmax(log_coe, tau=1, hard=True), dim=-1))
-                if sample != original_tokens and torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, sample, WINDOW_SIZE * NUM_TOK_MSG)) <= original_loss:
-                    found = True
+                # if sample != original_tokens and determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, sample, 180) <= original_loss:
+                if torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, sample, 180)) <= original_loss and not found_fit:
+                    found_fit = True
+                    accuracies_fit.append(found_at)
+                if sample != original_tokens and torch.sum(determine_losses(model, d[0][targ:], d[1][targ:], fitness_loss_fn, sample, 180)) <= original_loss and not found_adv:
+                    found_adv = True
+                    accuracies_adv.append(found_at)
+                if found_adv and found_fit:
                     break
                 found_at += 1
-            if not found:
-                found_at = -1
-            accuracies.append(found_at)
-    return accuracies
+            if not found_adv:
+                accuracies_adv.append(-1)
+            if not found_fit:
+                accuracies_fit.append(-1)
+    return accuracies_fit, accuracies_adv

@@ -18,13 +18,13 @@ class Transformer_From_Embedding(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.device = device
 
-    def forward(self, x, is_casual=True):
+    def forward(self, x, is_causal=True):
         tgt_embedded = self.positional_encoding(x)
         tgt_embedded = self.dropout(tgt_embedded)
 
         dec_output = tgt_embedded
         for dec_layer in self.decoder_layers:
-            dec_output = dec_layer(dec_output, is_casual)
+            dec_output = dec_layer(dec_output, is_causal)
 
         output = self.fc(dec_output)
         return output
