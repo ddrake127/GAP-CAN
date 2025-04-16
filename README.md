@@ -19,4 +19,11 @@ HCRL Dataset:
 ## Getting Started
 
 1. `pip install torch pandas numpy`
-2. `python3 gumbel_softmax_tester.py` to run the space search on both datasets.
+2. `python3 gumbel_softmax_tester.py` to run the space search with the following arguments:
+   - `--model` (i.e. one of the models from `final_models/` with corresponding json config file)
+   - `--model_path` (i.e. final_models)
+   - `--dataset` cic or hcrl
+   - `--output_dir` where you want the results saved to
+   - `--exp_name` experiment name you want the output files to have (each file produced will be named `exp_name_<thread_number>`)
+   - `--num_msgs` the number of messages that will be used for the space exploration (default 2500)
+   - `--num_procs` the number of processes to be spun up to run the experiment in parallel (default 16)
