@@ -19,7 +19,9 @@ HCRL Dataset:
 ## Getting Started
 
 1. `pip install torch pandas numpy`
-2. `python3 gumbel_softmax_tester.py` to run the space search with the following arguments:
+2. This repository comes with two pre-trained Transformer models for the HCRL and CIC dataset that are ready to be used in experiments.  They can be found in `final_models`
+   - if you would like to add a dataset, it will need a config file with the same keys as the models in this repository
+4. `python3 gumbel_softmax_tester.py` to run the space search with the following arguments:
    - `--model` (i.e. one of the models from `final_models/` with corresponding json config file)
    - `--model_path` (i.e. final_models)
    - `--dataset` cic or hcrl
