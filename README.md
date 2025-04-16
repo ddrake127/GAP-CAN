@@ -24,6 +24,6 @@ HCRL Dataset:
    - `--model_path` (i.e. final_models)
    - `--dataset` cic or hcrl
    - `--output_dir` where you want the results saved to
-   - `--exp_name` experiment name you want the output files to have (each file produced will be named `exp_name_<thread_number>`)
+   - `--exp_name` experiment name you want the output files to have (each file produced will be named `exp_name_<process_number>.txt`)
    - `--num_msgs` the number of messages that will be used for the space exploration (default 2500)
    - `--num_procs` the number of processes to be spun up to run the experiment in parallel (default 16)
