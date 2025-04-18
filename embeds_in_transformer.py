@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import sys
 sys.path.append('../')
-from CIC_Transformer_torch_model import *
+from Transformer_torch_model import *
 
 class Transformer_From_Embedding(nn.Module):
     def __init__(self, tgt_vocab_size, d_model, num_heads, num_layers, d_ff, max_seq_length, dropout, device):

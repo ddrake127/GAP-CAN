@@ -9,27 +9,20 @@ torch.set_float32_matmul_precision('highest')
 
 NUM_PROCS = 16
 NUM_MSGS = 2500
-
-
-def test_runner_hcrl(proc_id, model, model_path, output_dir, output_name):
-    ids = [258+i for i in range(proc_id, 27, NUM_PROCS)]
-    for i in ids:
-        for j in range(2, 10, 2):
-            results = run_gsm_multitoken_HCRL(model, model_path, i, [i for i in range(9-j)], j, NUM_MSGS)
-            with open(output_dir + "/" + output_name + str(proc_id) + ".txt", 'a') as f:
-                f.write("ID " + str(i) + ", " + str(j) + " tokens:\n")
-                f.write(str(results))
-                f.write("\n")
-                
-def test_runner_cic(proc_id, model, model_path, output_dir, output_name):
-    ids = [257+i for i in range(proc_id, 72, NUM_PROCS)]
-    for i in ids:
-        for j in range(2, 10, 2):
-            results = run_gsm_multitoken_CIC(model, model_path, i, [i for i in range(9-j)], j, NUM_MSGS)
-            with open(output_dir + "/" + output_name + str(proc_id) + ".txt", 'a') as f:
-                f.write("ID " + str(i) + ", " + str(j) + " tokens:\n")
-                f.write(str(results))
-                f.write("\n")
+HCRL_FIRST_ID = 258 # the first id token value is 258
+CIC_FIRST_ID = 257 # the first id token value is 257
+            
+def test_runner(f, id, model, model_path, output_dir, output_name):
+    if f == run_gsm_multitoken_HCRL:
+        id += HCRL_FIRST_ID
+    elif f == run_gsm_multitoken_CIC:
+        id += CIC_FIRST_ID
+    for j in range(2, 10, 2):
+        results = f(model, model_path, id, [i for i in range(9-j)], j, NUM_MSGS)
+        with open(output_dir + "/" + output_name + str(id) + ".txt", 'a') as f:
+            f.write("ID " + str(id) + ", " + str(j) + " tokens:\n")
+            f.write(str(results))
+            f.write("\n")
     
     
 def main():
@@ -45,22 +38,28 @@ def main():
     
     args = parser.parse_args()
     
+    num_ids = 0
+    
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
         
     if args.dataset.lower() == 'hcrl':
-        targ = test_runner_hcrl
+        targ = run_gsm_multitoken_HCRL
+        num_ids = 27
     elif args.dataset.lower() == 'cic':
-        targ = test_runner_cic
+        targ = run_gsm_multitoken_CIC
+        num_ids = 72
     else:
         print("unknown dataset!")
         sys.exit()
         
     futures = []
     with ProcessPoolExecutor(max_workers=args.num_procs) as pool:
-        for i in range(NUM_PROCS):
-            futures.append(pool.submit(targ, i,args.model, args.model_path, args.output_dir, args.exp_name))
+        for i in range(num_ids):
+            futures.append(pool.submit(test_runner, targ, i,args.model, args.model_path, args.output_dir, args.exp_name))
         wait(futures, return_when=ALL_COMPLETED)
+        for f in futures:
+            print(f.result())
     
 if __name__ == "__main__":
     main()

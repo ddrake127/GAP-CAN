@@ -5,7 +5,7 @@ import json, sys
 
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-from CIC_Transformer_torch_model import *
+from Transformer_torch_model import *
 from embeds_in_transformer import Transformer_From_Embedding
 
 torch.set_float32_matmul_precision('highest')
