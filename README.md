@@ -1,5 +1,5 @@
 # GAP-CAN
-This repository contains the source code for the GAP-CAN framework, which searches for adversarial samples in CAN Bus message streams.
+This repository contains the source code for the GAP-CAN framework, which searches for adversarial samples in CAN Bus message streams.  The paper can be found here: https://www.researchgate.net/publication/390805968_GAP-CAN_Gradient-Based_Adversarial_Attack_on_Transformers_for_CAN_Bus_Anomaly_Detection
 
 ## Citations
 #### If you use the software presented in this repository, please cite as:
