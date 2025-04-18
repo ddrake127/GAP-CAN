@@ -23,7 +23,7 @@ HCRL Dataset:
    - if you would like to add a dataset, it will need a config file with the same keys as the models in this repository
 4. `python3 gumbel_softmax_tester.py` to run the space search with the following arguments:
    - `--model` (i.e. one of the models from `final_models/` with corresponding json config file)
-   - `--model_path` (i.e. final_models)
+   - `--model_path` (i.e. `final_models/`)
    - `--dataset` cic or hcrl
    - `--output_dir` where you want the results saved to
    - `--exp_name` experiment name you want the output files to have (each file produced will be named `exp_name_<process_number>.txt`)
