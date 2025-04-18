@@ -30,4 +30,4 @@ HCRL Dataset:
    - `--num_msgs` the number of messages that will be used for the space exploration (default 2500)
    - `--num_procs` the number of processes to be spun up to run the experiment in parallel (default 16)
 
-Example usage: `python gumbel_softmax_tester.py --model model_hcrl --dataset hcrl --model_path final_models/ --exp_name test_experiment --output_dir hcrl_experiments --num_procs 16 --num_msgs 200`
+Example usage: `python gumbel_softmax_tester.py --model model_hcrl --dataset hcrl --model_path final_models/ --exp_name test_experiment --output_dir hcrl_experiments --num_procs 16 --num_msgs 2500`
