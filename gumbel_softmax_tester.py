@@ -12,13 +12,13 @@ NUM_MSGS = 2500
 HCRL_FIRST_ID = 258 # the first id token value is 258
 CIC_FIRST_ID = 257 # the first id token value is 257
             
-def test_runner(f, id, model, model_path, output_dir, output_name):
+def test_runner(f, id, model, model_path, output_dir, output_name, num_messages):
     if f == run_gsm_multitoken_HCRL:
         id += HCRL_FIRST_ID
     elif f == run_gsm_multitoken_CIC:
         id += CIC_FIRST_ID
     for j in range(2, 10, 2):
-        results = f(model, model_path, id, [i for i in range(9-j)], j, NUM_MSGS)
+        results = f(model, model_path, id, [i for i in range(9-j)], j, num_messages)
         with open(output_dir + "/" + output_name + str(id) + ".txt", 'a') as f:
             f.write("ID " + str(id) + ", " + str(j) + " tokens:\n")
             f.write(str(results))
@@ -34,7 +34,7 @@ def main():
     parser.add_argument("--output_dir", type=str, required=True, help="Path to outputs")
     parser.add_argument("--exp_name", type=str, required=True, help="Outputs name")
     parser.add_argument("--num_procs", type=int, default=NUM_PROCS, required=False, help="Number of processes to run the attack, each process will have its own GPU stream")
-    parser.add_argument("--num_msgs", type=int, default=2500, required=False, help="Number of messages to consider")
+    parser.add_argument("--num_msgs", type=int, default=NUM_MSGS, required=False, help="Number of messages to consider")
     
     args = parser.parse_args()
     
@@ -56,7 +56,7 @@ def main():
     futures = []
     with ProcessPoolExecutor(max_workers=args.num_procs) as pool:
         for i in range(num_ids):
-            futures.append(pool.submit(test_runner, targ, i,args.model, args.model_path, args.output_dir, args.exp_name))
+            futures.append(pool.submit(test_runner, targ, i,args.model, args.model_path, args.output_dir, args.exp_name, args.num_msgs))
         wait(futures, return_when=ALL_COMPLETED)
         for f in futures:
             print(f.result())
