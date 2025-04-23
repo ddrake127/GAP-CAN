@@ -19,10 +19,10 @@ def test_runner(f, id, model, model_path, output_dir, output_name, num_messages)
         id += CIC_FIRST_ID
     for j in range(2, 10, 2):
         results = f(model, model_path, id, [i for i in range(9-j)], j, num_messages)
-        with open(output_dir + "/" + output_name + str(id) + ".txt", 'a') as f:
-            f.write("ID " + str(id) + ", " + str(j) + " tokens:\n")
-            f.write(str(results))
-            f.write("\n")
+        with open(output_dir + "/" + output_name + str(id) + ".txt", 'a') as file:
+            file.write("ID " + str(id) + ", " + str(j) + " tokens:\n")
+            file.write(str(results))
+            file.write("\n")
     
     
 def main():
