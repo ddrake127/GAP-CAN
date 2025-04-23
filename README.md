@@ -27,7 +27,9 @@ HCRL Dataset:
    - `--dataset` cic or hcrl
    - `--output_dir` where you want the results saved to
    - `--exp_name` experiment name you want the output files to have (each file produced will be named `exp_name_<process_number>.txt`)
-   - `--num_msgs` the number of messages that will be used for the space exploration (default 2500)
+   - `--num_msgs` the number of messages that will be used for the space exploration (default 2500)[^1]
    - `--num_procs` the number of processes to be spun up to run the experiment in parallel (default 16)
 
 Example usage: `python gumbel_softmax_tester.py --model model_hcrl --dataset hcrl --model_path final_models/ --exp_name test_experiment --output_dir hcrl_experiments --num_procs 16 --num_msgs 2500`
+
+[^1]: Note that this will be different from the number of space explorations done since the input is sliding windows.  If `num_msgs` = 10 and `window_size` for the model is 9, there are only 2 input windows that can be created with the 10 messages given.
