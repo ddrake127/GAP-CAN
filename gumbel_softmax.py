@@ -236,13 +236,13 @@ def load_models(path, model_name, ids_path, new_device=None):
 
     # load the original model
     model = Transformer(params["tgt_vocab_size"], params["d_model"], params["num_heads"], params["num_layers"], params["d_ff"], params["max_seq_length"], params["dropout"], params['device'])
-    model.load_state_dict(torch.load(path + model_name, map_location=lambda storage, loc: storage, weights_only=True))
+    model.load_state_dict(torch.load(path + model_name, map_location="cpu", weights_only=True))
     model.eval()
     model.to(params["device"])
 
     # load the model that is the same model as the one above, but modified to take embeddings instead of tokens
     model_from_embedding = Transformer_From_Embedding(params["tgt_vocab_size"], params["d_model"], params["num_heads"], params["num_layers"], params["d_ff"], params["max_seq_length"], params["dropout"], params['device'])
-    model_from_embedding.load_state_dict(torch.load(path + model_name, map_location=lambda storage, loc: storage, weights_only=True), strict=False)
+    model_from_embedding.load_state_dict(torch.load(path + model_name, map_location="cpu", weights_only=True), strict=False)
     model_from_embedding.eval()
     model_from_embedding.to(params["device"])
 
